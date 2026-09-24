@@ -12,10 +12,21 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const seedDB = async () => {
+  const primaryUri = process.env.MONGODB_URI;
+  const fallbackUri = 'mongodb://127.0.0.1:27017/civic_resolve';
+
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/civic_resolve';
-    console.log(`Connecting to MongoDB at: ${mongoUri}`);
-    await mongoose.connect(mongoUri);
+    console.log(`Connecting to MongoDB at: ${primaryUri || fallbackUri}`);
+    try {
+      await mongoose.connect(primaryUri || fallbackUri);
+    } catch (err) {
+      if (primaryUri && primaryUri !== fallbackUri) {
+        console.warn(`Primary connection failed: ${err.message}. Falling back to local MongoDB Compass...`);
+        await mongoose.connect(fallbackUri);
+      } else {
+        throw err;
+      }
+    }
     console.log('[MongoDB Connected Successfully]');
 
     // Clear existing data

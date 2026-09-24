@@ -89,13 +89,46 @@ export default function Login() {
       </form>
 
       <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-         <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">
-           <p className="font-semibold text-slate-900 dark:text-slate-200 mb-2">Test Credentials (Password: <code className="text-blue-600 font-mono">password123</code>):</p>
-           <ul className="space-y-1">
-             <li><span className="font-medium text-slate-900 dark:text-white">Admin:</span> admin@example.com</li>
-             <li><span className="font-medium text-slate-900 dark:text-white">Officer:</span> officer@example.com</li>
-             <li><span className="font-medium text-slate-900 dark:text-white">Citizen:</span> citizen@example.com</li>
-           </ul>
+         <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">
+           <div className="flex items-center justify-between mb-3">
+             <p className="font-semibold text-slate-900 dark:text-slate-200">1-Click Quick Demo Login</p>
+             <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 font-mono px-2 py-0.5 rounded">password123</span>
+           </div>
+           <div className="grid grid-cols-3 gap-2">
+             <button
+               type="button"
+               onClick={() => {
+                 login('admin@example.com', 'password123').then(res => {
+                   if (res.success) navigate('/admin');
+                 });
+               }}
+               className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800/50 transition-colors"
+             >
+               👑 Admin
+             </button>
+             <button
+               type="button"
+               onClick={() => {
+                 login('officer@example.com', 'password123').then(res => {
+                   if (res.success) navigate('/officer');
+                 });
+               }}
+               className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800/50 transition-colors"
+             >
+               🛡️ Officer
+             </button>
+             <button
+               type="button"
+               onClick={() => {
+                 login('citizen@example.com', 'password123').then(res => {
+                   if (res.success) navigate('/dashboard');
+                 });
+               }}
+               className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/50 transition-colors"
+             >
+               🏙️ Citizen
+             </button>
+           </div>
          </div>
       </div>
     </AuthLayout>

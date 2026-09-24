@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '../../components/ui';
 import { MOCK_STATS } from '../../lib/mockData';
-import { statsAPI } from '../../lib/api';
-import { BarChart3, Users, FileText, CheckCircle, Loader2 } from 'lucide-react';
+import { statsAPI, issuesAPI } from '../../lib/api';
+import { 
+  BarChart3, Users, FileText, CheckCircle, Loader2, 
+  Download, Sparkles, TrendingUp, ShieldCheck, Activity,
+  Layers, ArrowUpRight, Clock
+} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { ExportReportModal } from '../../components/ExportReportModal';
 
 const defaultCategoryDataMap = {
   all: [
@@ -55,15 +60,23 @@ export default function Dashboard() {
   const [trendDataMap, setTrendDataMap] = useState(defaultTrendDataMap);
   const [trendRange, setTrendRange] = useState('1y');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [allIssues, setAllIssues] = useState([]);
 
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const res = await statsAPI.getOverview();
-        if (res.success) {
-          if (res.stats) setStats(res.stats);
-          if (res.categories) setCategoryDataMap(res.categories);
-          if (res.trends) setTrendDataMap(res.trends);
+        const [statsRes, issuesRes] = await Promise.all([
+          statsAPI.getOverview(),
+          issuesAPI.getAll()
+        ]);
+        if (statsRes.success) {
+          if (statsRes.stats) setStats(statsRes.stats);
+          if (statsRes.categories) setCategoryDataMap(statsRes.categories);
+          if (statsRes.trends) setTrendDataMap(statsRes.trends);
+        }
+        if (issuesRes.success && issuesRes.data) {
+          setAllIssues(issuesRes.data);
         }
       } catch (err) {
         console.warn('Using default statistics fallback:', err?.message);
@@ -72,44 +85,101 @@ export default function Dashboard() {
     loadStats();
   }, []);
 
-  const currentTrendData = trendDataMap[trendRange];
-  const currentCategoryData = categoryDataMap[categoryFilter];
+  const currentTrendData = trendDataMap[trendRange] || trendDataMap['1y'];
+  const currentCategoryData = categoryDataMap[categoryFilter] || categoryDataMap['all'];
+
   return (
     <div className="space-y-6 font-sans">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admin Overview</h1>
-        <p className="text-slate-500 mt-1">System wide statistics and reports.</p>
+      {/* Executive Command Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-bold mb-1.5">
+            <ShieldCheck className="w-3.5 h-3.5" /> Executive BI & City Governance
+          </div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Admin Intelligence Overview</h1>
+          <p className="text-sm text-slate-500">Cross-departmental performance, SLA metrics, and issue resolution trends.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="secondary" 
+            className="font-bold text-xs"
+            onClick={() => setIsExportOpen(true)}
+          >
+            <Download className="w-4 h-4 mr-2" /> Export Datasets
+          </Button>
+        </div>
       </div>
 
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Issues", value: stats.totalIssues, icon: FileText, color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-900/50" },
-          { label: "Resolved", value: stats.resolvedIssues, icon: CheckCircle, color: "text-green-600", bg: "bg-green-100 dark:bg-green-900/50" },
-          { label: "Pending", value: stats.pendingIssues, icon: BarChart3, color: "text-orange-600", bg: "bg-orange-100 dark:bg-orange-900/50" },
-          { label: "Avg Resolution", value: stats.avgResolutionTime, icon: Users, color: "text-purple-600", bg: "bg-purple-100 dark:bg-purple-900/50" }
+          { 
+            label: "Total Civic Incidents", 
+            value: stats.totalIssues, 
+            icon: FileText, 
+            color: "text-blue-600 dark:text-blue-400", 
+            bg: "bg-blue-50 dark:bg-blue-950/60",
+            trend: "+12% this month",
+            trendColor: "text-blue-500"
+          },
+          { 
+            label: "Resolved Incidents", 
+            value: stats.resolvedIssues, 
+            icon: CheckCircle, 
+            color: "text-emerald-600 dark:text-emerald-400", 
+            bg: "bg-emerald-50 dark:bg-emerald-950/60",
+            trend: "94.2% SLA verified",
+            trendColor: "text-emerald-500"
+          },
+          { 
+            label: "Active Queue", 
+            value: stats.pendingIssues, 
+            icon: Clock, 
+            color: "text-amber-600 dark:text-amber-400", 
+            bg: "bg-amber-50 dark:bg-amber-950/60",
+            trend: "Average 18 hrs open",
+            trendColor: "text-amber-500"
+          },
+          { 
+            label: "Avg Resolution Velocity", 
+            value: stats.avgResolutionTime, 
+            icon: TrendingUp, 
+            color: "text-purple-600 dark:text-purple-400", 
+            bg: "bg-purple-50 dark:bg-purple-950/60",
+            trend: "14% faster than target",
+            trendColor: "text-purple-500"
+          }
         ].map((stat, i) => (
-          <Card key={i}>
-            <CardContent className="p-6 pt-6 flex items-center space-x-4">
-              <div className={`p-3 rounded-full ${stat.bg} ${stat.color}`}>
-                <stat.icon className="w-6 h-6" />
+          <div key={i} className="enterprise-card p-5 rounded-2xl">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{stat.label}</span>
+              <div className={`p-2.5 rounded-xl ${stat.bg} ${stat.color}`}>
+                <stat.icon className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</h3>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stat.value}</h3>
+            </div>
+            <p className={`text-xs font-semibold ${stat.trendColor} mt-2 flex items-center gap-1`}>
+              <ArrowUpRight className="w-3 h-3" /> {stat.trend}
+            </p>
+          </div>
         ))}
       </div>
 
+      {/* BI Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle>Issues by Category</CardTitle>
+        {/* Category Breakdown */}
+        <Card className="shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <CardTitle className="text-sm font-bold">Issues by Municipal Category</CardTitle>
+              <p className="text-xs text-slate-400">Distribution across city service categories</p>
+            </div>
             <select 
               value={categoryFilter} 
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="text-sm bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               <option value="all">All Priorities</option>
               <option value="critical">Critical Only</option>
@@ -117,23 +187,31 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="h-72 mx-2 mb-2 pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={currentCategoryData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                <Tooltip cursor={{fill: 'rgba(241, 245, 249, 0.5)'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <BarChart data={currentCategoryData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#33415520" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+                <Tooltip 
+                  cursor={{fill: 'rgba(59, 130, 246, 0.05)'}} 
+                  contentStyle={{borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: '#0f172a', color: '#fff', fontSize: '12px'}} 
+                />
+                <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle>Resolution Trend</CardTitle>
+
+        {/* Resolution Trend */}
+        <Card className="shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <CardTitle className="text-sm font-bold">Resolution Velocity vs Inflow</CardTitle>
+              <p className="text-xs text-slate-400">Reported vs resolved incidents timeline</p>
+            </div>
             <select 
               value={trendRange} 
               onChange={(e) => setTrendRange(e.target.value)}
-              className="text-sm bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               <option value="7d">Last 7 Days</option>
               <option value="1m">This Month</option>
@@ -142,28 +220,38 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="h-72 mx-2 mb-2 pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={currentTrendData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+              <AreaChart data={currentTrendData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                 <defs>
                   <linearGradient id="colorResolved" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="colorReported" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                <Area type="monotone" dataKey="reported" stroke="#3b82f6" fillOpacity={1} fill="url(#colorReported)" name="Reported" />
-                <Area type="monotone" dataKey="resolved" stroke="#22c55e" fillOpacity={1} fill="url(#colorResolved)" name="Resolved" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#33415520" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+                <Tooltip 
+                  contentStyle={{borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: '#0f172a', color: '#fff', fontSize: '12px'}} 
+                />
+                <Area type="monotone" dataKey="reported" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorReported)" name="Reported" />
+                <Area type="monotone" dataKey="resolved" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorResolved)" name="Resolved" />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
+
+      {/* Export Datasets Modal */}
+      <ExportReportModal 
+        isOpen={isExportOpen} 
+        onClose={() => setIsExportOpen(false)} 
+        data={allIssues}
+        title="Comprehensive Civic Issues Export"
+      />
     </div>
   );
 }
